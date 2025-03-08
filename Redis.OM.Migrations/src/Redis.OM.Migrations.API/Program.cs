@@ -1,8 +1,14 @@
+using Redis.OM;
+using Redis.OM.Contracts;
+using Redis.OM.Migrations.API;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddSingleton<IRedisConnectionProvider>(new RedisConnectionProvider("redis://localhost:6379"));
+builder.Services.AddHostedService<CleanupService>();
 
 var app = builder.Build();
 
@@ -32,6 +38,29 @@ app.MapGet("/weatherforecast", () =>
         return forecast;
     })
     .WithName("GetWeatherForecast");
+
+app.MapPost("/user/index", async (IRedisConnectionProvider provider) =>
+{
+    await provider.Connection.CreateIndexAsync(typeof(User));
+});
+
+app.MapPost("/user", async (IRedisConnectionProvider provider) =>
+{
+    var users = provider.RedisCollection<User>();
+    var user = new User
+    {
+        Address = "Kyoto",
+        Name = "Brother"
+    };
+
+    var key = await users.InsertAsync(user);
+
+    return Results.Ok(new
+    {
+        user.Id,
+        Key = key,
+    });
+});
 
 app.Run();
 
