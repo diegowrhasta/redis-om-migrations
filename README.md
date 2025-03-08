@@ -73,6 +73,11 @@ efficiently plus with really extendable capabilities. An easy way to check the i
 we have registered is by going into the Redis instance and running through the cli: 
 `redis-cli > FT._LIST`
 
+So as an example, we have the `POST /user/` endpoint, that will insert a pre-defined 
+user onto Redis, and the way to access its record would be through `User:<ULID>`. 
+The record type should be of `JSON` type, plus, by querying indexes, we should 
+also be seeing `1) users` listed.
+
 ## Project Notes
 
 - A `CleanupService` has been implemented to drop all indexes (and in turn all documents) 
