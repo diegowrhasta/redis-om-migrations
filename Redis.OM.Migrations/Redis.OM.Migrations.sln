@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{51540775-DDA8-4CCD-9319-C54CCC14F8D5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{1643E248-9A40-48E4-88AC-22C64E3F3DCF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Redis.OM.Migrations.API", "src\Redis.OM.Migrations.API\Redis.OM.Migrations.API.csproj", "{DCA943F4-38A9-4A7D-BBBD-EAE79B6EA570}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{5B12CD88-67FC-4DBA-B1C1-A863735F4C6C}"
+	ProjectSection(SolutionItems) = preProject
+		..\.gitignore = ..\.gitignore
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{DCA943F4-38A9-4A7D-BBBD-EAE79B6EA570} = {51540775-DDA8-4CCD-9319-C54CCC14F8D5}
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DCA943F4-38A9-4A7D-BBBD-EAE79B6EA570}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DCA943F4-38A9-4A7D-BBBD-EAE79B6EA570}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DCA943F4-38A9-4A7D-BBBD-EAE79B6EA570}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DCA943F4-38A9-4A7D-BBBD-EAE79B6EA570}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
