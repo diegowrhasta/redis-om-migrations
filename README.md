@@ -78,6 +78,54 @@ user onto Redis, and the way to access its record would be through `User:<ULID>`
 The record type should be of `JSON` type, plus, by querying indexes, we should 
 also be seeing `1) users` listed.
 
+## Introducing migrations as a concept
+
+At its core, we can't be enforcing structure on a document data model; it's not 
+designed for that, hence we won't go as far as having things akin to _ALTER TABLE_, 
+_CREATE TABLE_. But what we can is set out all the **indexes** that will be needed 
+for all our documents, plus seeding with some pre-defined dataset if needed.
+(And we will attempt at designing and implementing a concise and clean solution, 
+leveraging the concept of a _migration document_ something that in EF Core's case 
+is analog to the `__EFMigrationsHistory` table). The code behind this migration 
+metadata key is at `RedisMigrator.cs`.
+
+We will keep a key under `SchemaMigration:Version` with a value that follows the 
+format `{yyyy}{MM}{dd}`. In case the redis service has been touched by our client, 
+said value should be present, if it's not, we will immediately create the record. 
+If we find that the key exists and according to the latest version in code vs 
+the value on the database we will also skip creation of indexes and seeding, if 
+the version varies we will run index creation plus seeding.
+
+_NOTE:_ Index creation is idempotent, if the index is already there it won't 
+do anything.
+
+**IMPORTANT:** By analyzing the code, you can see how we are leveraging both 
+_async programming_ plus _parallelization_. Specially on the `CleanupService.cs` 
+side in which, even though we do not have an `async` variation for `DropIndexAndAssociatedRecords` 
+we can easily parallelize the sync calls by wrapping them under a `Task.Run()`. Hence, 
+we won't be blocking the main thread and will dispatch all the calls in different 
+threads.
+
+The code is aimed at using best practices enforced by Redis themselves, which is 
+batching operations instead of sending multiple requests over the network.
+
+## Keeping Dev Packages
+
+A concept that one could easily borrow from `Node` projects is the concept of 
+`devDependencies`, which in short is a way to mark certain packages to not be 
+part of the final bundle of a project when building it for prod. In our case, 
+that can be extended to something like `Bogus`. Which is a fake data generator, 
+unless there's a compelling case to have it available on prod, we can mark it 
+as something that won't be copied to the _publish_ bundle by stating:
+
+```
+<PackageReference Include="Bogus" Version="35.6.2" PrivateAssets="all"/>
+```
+
+## Persisting Redis
+
+
+
 ## Project Notes
 
 - A `CleanupService` has been implemented to drop all indexes (and in turn all documents) 
