@@ -1,13 +1,28 @@
+using Microsoft.Extensions.Options;
 using Redis.OM;
 using Redis.OM.Contracts;
 using Redis.OM.Migrations.API;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+// Configurations
+builder.Services.Configure<ApiSettings>(builder.Configuration.GetSection(nameof(ApiSettings)));
+
+// Redis Configurations
+builder.Services.AddSingleton<IRedisMigrator, RedisMigrator>();
+builder.Services.AddStackExchangeRedisCache(x => x.ConfigurationOptions = new ConfigurationOptions
+{
+    EndPoints = { "localhost:6379" },
+    Password = string.Empty,
+});
 builder.Services.AddSingleton<IRedisConnectionProvider>(new RedisConnectionProvider("redis://localhost:6379"));
+
+// Hosted Services
 builder.Services.AddHostedService<CleanupService>();
 
 var app = builder.Build();
@@ -39,10 +54,8 @@ app.MapGet("/weatherforecast", () =>
     })
     .WithName("GetWeatherForecast");
 
-app.MapPost("/user/index", async (IRedisConnectionProvider provider) =>
-{
-    await provider.Connection.CreateIndexAsync(typeof(User));
-});
+app.MapPost("/user/index",
+    async (IRedisConnectionProvider provider) => { await provider.Connection.CreateIndexAsync(typeof(User)); });
 
 app.MapPost("/user", async (IRedisConnectionProvider provider) =>
 {
@@ -59,6 +72,30 @@ app.MapPost("/user", async (IRedisConnectionProvider provider) =>
     {
         user.Id,
         Key = key,
+    });
+});
+app.MapGet("/user", async (IRedisConnectionProvider provider) =>
+{
+    var users = provider.RedisCollection<User>();
+
+    return Results.Ok(await users.ToListAsync());
+});
+
+app.MapPost("/migration", async (ILogger<Program> logger, IRedisMigrator migrator, IOptions<ApiSettings> settings) =>
+{
+    logger.LogInformation("Initializing migration...");
+    await migrator.InitializeMigrationsAsync();
+
+    logger.LogInformation("Running migrations...");
+    await migrator.MigrateAsync();
+
+    logger.LogInformation("Running seeds...");
+    await migrator.SeedAsync();
+
+    return Results.Ok(new
+    {
+        WillCleanOnShutdown = settings.Value.CleanOnShutdown,
+        ForcedMigration = settings.Value.ForceMigration,
     });
 });
 

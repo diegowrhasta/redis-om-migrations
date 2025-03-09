@@ -5,12 +5,22 @@ Accept: application/json
 
 ###
 
+GET {{Redis_OM_Migrations_API_HostAddress}}/user/
+Accept: application/json
+
+###
+
 POST {{Redis_OM_Migrations_API_HostAddress}}/user/index/
 Accept: application/json
 
 ###
 
 POST {{Redis_OM_Migrations_API_HostAddress}}/user/
+Accept: application/json
+
+###
+
+POST {{Redis_OM_Migrations_API_HostAddress}}/migration/
 Accept: application/json
 
 ###

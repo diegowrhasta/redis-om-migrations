@@ -1,8 +1,12 @@
-﻿using Redis.OM.Contracts;
+﻿using Microsoft.Extensions.Options;
+using Redis.OM.Contracts;
 
 namespace Redis.OM.Migrations.API;
 
-public class CleanupService(IRedisConnectionProvider provider, ILogger<CleanupService> logger) : IHostedService
+public class CleanupService(
+    IRedisConnectionProvider provider,
+    ILogger<CleanupService> logger,
+    IOptions<ApiSettings> settings) : IHostedService
 {
     public Task StartAsync(CancellationToken cancellationToken)
     {
@@ -11,11 +15,21 @@ public class CleanupService(IRedisConnectionProvider provider, ILogger<CleanupSe
         return Task.CompletedTask;
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
+    public async Task StopAsync(CancellationToken cancellationToken)
     {
         logger.LogInformation("CleanupService shutting down...");
-        provider.Connection.DropIndexAndAssociatedRecords(typeof(User));
+        if (!settings.Value.CleanOnShutdown)
+        {
+            return;
+        }
 
-        return Task.CompletedTask;
+        var indexTasks = Constants.Indexes
+            .Select(index =>
+                Task.Run(
+                    () => provider.Connection.DropIndexAndAssociatedRecords(index),
+                    cancellationToken))
+            .ToArray();
+
+        await Task.WhenAll(indexTasks);
     }
 }
