@@ -14,6 +14,7 @@ builder.Services.AddOpenApi();
 builder.Services.Configure<ApiSettings>(builder.Configuration.GetSection(nameof(ApiSettings)));
 
 // Redis Configurations
+builder.Services.AddSingleton(ConnectionMultiplexer.Connect("localhost"));
 builder.Services.AddSingleton<IRedisMigrator, RedisMigrator>();
 builder.Services.AddStackExchangeRedisCache(x => x.ConfigurationOptions = new ConfigurationOptions
 {
@@ -97,6 +98,14 @@ app.MapPost("/migration", async (ILogger<Program> logger, IRedisMigrator migrato
         WillCleanOnShutdown = settings.Value.CleanOnShutdown,
         ForcedMigration = settings.Value.ForceMigration,
     });
+});
+
+app.MapPost("/snapshot", async (ConnectionMultiplexer muxer) =>
+{
+    var db = muxer.GetDatabase();
+    var result = await db.ExecuteAsync("BGSAVE");
+    
+    return Results.Ok(result);
 });
 
 app.Run();

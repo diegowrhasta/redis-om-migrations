@@ -24,3 +24,8 @@ POST {{Redis_OM_Migrations_API_HostAddress}}/migration/
 Accept: application/json
 
 ###
+
+POST {{Redis_OM_Migrations_API_HostAddress}}/snapshot/
+Accept: application/json
+
+###

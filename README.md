@@ -124,7 +124,110 @@ as something that won't be copied to the _publish_ bundle by stating:
 
 ## Persisting Redis
 
+We have a couple of ways of persisting data with Redis and go beyond the scope 
+of it being a Database _in-memory-only_.
 
+**RDB (Redis Database):** This type of persistence performs point-in-time snapshots 
+of your dataset at specified intervals.
+
+**AOF (Append Only File):** This logs every write operation received by the server. 
+These operations can then be replayed again at server startup, reconstructing the 
+original dataset. Commands are logged in the same format as the Redis protocol itself.
+
+[Reference](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/)
+
+You can use one or the other, and even in other instances you could combine both 
+approaches, their key differences are performance vs resilience in case of critical 
+failures in a system; RDB depending on its configurations it could lose a lot of data 
+in comparison to the most aggressive configuration in AOF that can be one second.
+
+### RDB
+
+For writing a file in snapshots, you can simply configure redis with these parameters
+(as an example):
+
+```
+save 60 1000
+```
+
+_Note:_ This specific configuration tells Redis to dump the dataset to disk every 
+60 seconds if at least 1000 keys changed.
+
+This process _forks_ redis, which is at an OS level duplicating the process, but in 
+a parent-child manner, this child process only cares about generating the new snapshot 
+up until that point, once it's done it replaces a previous snapshot file if present.
+
+### AOF
+
+Snapshotting might not be as resilient in case of really important data and disasters 
+striking the system, hence AOF is a bit more aggressive in its saving nature, you 
+can configure it to not be as aggressive, but it's based around the idea of logging 
+every transaction to a file, you can simply configure a `appendonly yes` to get 
+it working.
+
+It has optimizations to optimize the operations when trying to re-build the dataset, 
+but it's worth noting that it also manages the concept of one base file that's actually 
+a snapshot (RDB), and subsequent _child_ files being incremental in nature for 
+reconstructing the dataset when restarting the service.
+
+**IMPORTANT:** In either approach, having state saved to a file, a good way to 
+keep it protected would be by encryption methods.
+
+### Project Persistence
+
+The project will focus on `RDB`, plus encryption of the generated file following 
+OWASP standards.
+
+First of all, we have to configure the service itself to start saving our file, and 
+so we need to know a few key concepts to leverage this very fact:
+
+Linux:
+```
+docker run -d --name redis-stack -p 6379:6379 -v ./redis-data:/data -v ./redis.conf:/etc/redis/redis.conf redis/redis-stack-server:latest 
+```
+
+Windows
+```
+docker run -d --name redis-stack -p 6379:6379 -v .\redis-data:/data -v .\redis.conf:/etc/redis/redis.conf redis/redis-stack-server:latest 
+```
+
+- Redis saves all of its data and files at `/data` in the container. And so, if 
+we want to persist it we can mount that path to our host machine. In our case it's 
+recommended to run the docker run command at the API project's path so that we have
+all the data at hand.
+- There are different ways to configure the persistence behavior, the most straightforward 
+way is by also mounting a `redis.conf` file, that we have also at the root of the 
+API project:
+
+```
+save 900 1
+save 300 10
+save 60 10000
+appendonly no
+dir /data
+dbfilename dump.rdb
+```
+
+- `--save 900 1` → Saves every 900 seconds (if at least 1 key changes).
+- `--save 300 10` → Saves every 300 seconds (if at least 10 keys change).
+- `--save 60 10000` → Saves every 60 seconds (if at least 10,000 keys change).
+- `--appendonly no` → Disables AOF (only RDB will be used).
+- `dir /data` specifies that the Redis directory will be under `/data`
+- `dbfilename dump.rdb` specifies that whenever a snapshot is generated, it will 
+be under the `dump.rdb` name (at /data)
+
+An endpoint under a `POST /snapshot` is also available so that we manually trigger 
+Redis to create the snapshot. It's recommended to use `BGSAVE` instead of `SAVE` 
+since the former will run in a separate child process and won't block other 
+operations on the main process.
+
+- [SAVE command](https://redis.io/docs/latest/commands/save/)
+- [BGSAVE command](https://redis.io/docs/latest/commands/bgsave/)
+
+If we have configured everything correctly, we should be seeing under a `redis-data` 
+folder on our host machine (at the API project root) the `dump.rdb` file. Even if 
+we stop the redis container, and then get it back on, we should have pre-seeded 
+data persisted there (unless we configure the API to delete records).
 
 ## Project Notes
 

@@ -70,3 +70,7 @@ client_secrets.json
 # Automation files
 
 appsettings.bak.json
+
+# Redis
+
+*.rdb
