@@ -229,6 +229,43 @@ folder on our host machine (at the API project root) the `dump.rdb` file. Even i
 we stop the redis container, and then get it back on, we should have pre-seeded 
 data persisted there (unless we configure the API to delete records).
 
+### Encryption
+
+In production ready environments, you obviously should keep your data secured, 
+you can't just be managing the `.rdb` file as if it were a text file. Whilst it's 
+a binary file, you can just insert it into a redis instance and retrieve everything. 
+Hence, we should use external tools to encrypt this binary file. And so following 
+OWASP's best practices we can apply:
+
+- Symmetric Encryption (AES) (256 bits encryption key)
+  - And a secure mode: (GCM is available in .NET 5+)
+    - AES-GCM requires a 12-byte IV (96 bits) for optimal security. (We can use
+    other sizes, but this is the recommended one)
+    - AES-GCM requires a 16-byte tag for optimal security
+    - **The key should be kept secret**, however IV and Tag are needed to be paired up 
+    with the payload that has been encrypted. They each have to be generated to then 
+    apply them when encrypting a payload. (They should be random enough as well). 
+    It is with them that we also decrypt the payload both in terms of a randomness 
+    factor on top of authentication with a `tag`
+    - The way to pair up both the encrypted payload with these other two factors 
+    could be by appending their bytes contiguously (e.g., Store the IV + Ciphertext + Authentication Tag together). 
+    but in terms of a **file**, we would have to turn the file into bytes and then add 
+    to the tail or the start the different variables. An extra layer of security 
+    is indirectly generated here since the order of how to interpret the data 
+    should be secret to outsiders (unless they have access to the source code)
+    - When working with files we have to keep in mind something, in case we will 
+    be encrypting very large files, we might end up running in memory over-consumption 
+    and so a technique to mitigate this can be **encryption in _chunks_**. This is 
+    extremely important since the more complex the encryption algorithm the more 
+    computer power it will need, in other words, secure algorithms will require optimizations 
+    so that the machine in charge of the process does not end up collapsing.
+
+[Reference](https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html#algorithms)
+
+### File Encryption
+
+
+
 ## Project Notes
 
 - A `CleanupService` has been implemented to drop all indexes (and in turn all documents) 
