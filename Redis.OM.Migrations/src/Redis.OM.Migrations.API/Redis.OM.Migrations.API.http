@@ -29,3 +29,34 @@ POST {{Redis_OM_Migrations_API_HostAddress}}/snapshot/
 Accept: application/json
 
 ###
+
+GET {{Redis_OM_Migrations_API_HostAddress}}/aes-key/
+Accept: application/json
+
+###
+
+POST {{Redis_OM_Migrations_API_HostAddress}}/encrypt
+Accept: application/json
+
+###
+
+POST {{Redis_OM_Migrations_API_HostAddress}}/encrypt/text?message=Hello People!
+Accept: application/json
+
+###
+
+POST {{Redis_OM_Migrations_API_HostAddress}}/decrypt/text
+Accept: application/json
+Content-Type: application/json
+
+{
+  "base64EncodedEncryptedText": "+Ndi1vcrdxRQ2I0Rhg==",
+  "iv": "+C4Hrd76badPpo2V",
+  "tag": "sapJaIt7Exho5ZLFg6/cYg=="
+}
+###
+
+POST {{Redis_OM_Migrations_API_HostAddress}}/decrypt
+Accept: application/json
+
+###

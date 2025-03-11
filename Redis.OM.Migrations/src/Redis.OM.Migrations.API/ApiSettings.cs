@@ -3,5 +3,6 @@
 public class ApiSettings
 {
     public bool CleanOnShutdown { get; init; }
-    public bool ForceMigration { get; init; }    
+    public bool ForceMigration { get; init; }
+    public string? EncryptionKey { get; init; }
 }
