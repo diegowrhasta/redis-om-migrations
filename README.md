@@ -229,6 +229,17 @@ folder on our host machine (at the API project root) the `dump.rdb` file. Even i
 we stop the redis container, and then get it back on, we should have pre-seeded 
 data persisted there (unless we configure the API to delete records).
 
+**_NOTE:_** We require to get a multiplexer instance manually with `StackExchange.Redis` 
+if we want access to the interface that allows us to run Redis commands directly. 
+`Redis.OM` tries to abstract it away, and so we can't leverage its API to get 
+access to the `IDatabase` instance.
+
+**_NOTE:_** `Microsoft.Extensions.Caching.StackExchangeRedis` is another library 
+that bridges the interchangeable nature of what Microsoft tries to do with all 
+of its design choices. Instead of coupling the code-base with the library specific 
+interfaces, we can leverage `IDistributedCache` so that we consume a really 
+interchangeable instance but that is implemented with Redis.
+
 ### Encryption
 
 In production ready environments, you obviously should keep your data secured, 
@@ -241,7 +252,7 @@ OWASP's best practices we can apply:
   - And a secure mode: (GCM is available in .NET 5+)
     - AES-GCM requires a 12-byte IV (96 bits) for optimal security. (We can use
     other sizes, but this is the recommended one)
-    - AES-GCM requires a 16-byte tag for optimal security
+    - AES-GCM requires a 16-byte tag for optimal security on its auth side
     - **The key should be kept secret**, however IV and Tag are needed to be paired up 
     with the payload that has been encrypted. They each have to be generated to then 
     apply them when encrypting a payload. (They should be random enough as well). 
@@ -262,9 +273,58 @@ OWASP's best practices we can apply:
 
 [Reference](https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html#algorithms)
 
-### File Encryption
+#### Key
 
+According to **OWASP**, a good encryption key should be 256 bits long, the `GET /aes-key` 
+endpoint takes care of generating a random set of 256 bits, and returning that in 
+the form of a `base64` string.
 
+This key can then be leveraged _hidden_ from prying eyes in configurations. In our 
+case a generated key is being saved under `appsettings.json`, now of course, this 
+key should never be disclosed, and should be kept under a Secret Vault, or hidden 
+files that are put on deployment machines.
+
+#### Text Encryption
+
+**_IMPORTANT:_** At its core, encryption is a process that takes a set of bytes, 
+and through mathematical operations scrambles them in a way that seems at random 
+and that takes an immense amount of effort to brute force. However, there's a trail 
+left behind and when the right amount of variables come together, those scrambled 
+bytes can be mutated back into their original form (a form that we would leverage 
+for whatever purpose).
+
+With this idea in mind we can encrypt whatever we want, may it be plain text, 
+or files. Everything that gets saved into a computer may it be through disk or 
+memory, they all in the end are a set of bytes, bytes we can then apply encryption 
+algorithms to.
+
+The `/encrypt/text` and `/decrypt/text` are pair endpoints that one can leverage 
+to send a plain-text string in the form of a query param to then get back its 
+encrypted form (in a base64 string), plus the iv and tag for it _also in base64_, 
+with the second endpoint you can then send those same input parameters so that 
+their bytes can be retrieved from the base64 representation, and then they are 
+put under the decryption function and outputting the original message if everything 
+falls into place
+
+#### Package Text Encryption
+
+Instead of managing the different variables as separate entities in whatever 
+form, we can encode them right into the same byte array as the original information 
+we encrypted. This is often times referred as _packaging_. Meaning we can put 
+iv and tag next to the original set of bytes, and then retrieving them respectively 
+when trying to decrypt the text later.
+
+The `/encrypt/package/text` and `/decrypt/package/text` work almost the same as 
+the previous base text encryption endpoints with the only difference that we only 
+get one _base64 string_ that represents the byte array that contains the iv, the 
+tag and the actual encrypted information bytes. When trying to decrypt we will 
+have to send the same _base64 string_ and just wait for the decrypted message by 
+the end. This is a more concise approach, and indirectly a bit more obfuscated 
+than the previous method.
+
+#### File direct encryption
+
+#### File by-chunk encryption
 
 ## Project Notes
 

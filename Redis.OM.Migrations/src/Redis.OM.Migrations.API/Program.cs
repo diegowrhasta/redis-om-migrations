@@ -126,7 +126,7 @@ app.MapPost("/encrypt/text", async (IEncryptionService service, string message) 
     var messageBytes = Encoding.UTF8.GetBytes(message);
 
     var result = await service.EncryptAsync(messageBytes, out var iv, out var tag);
-    
+
     return Results.Ok(
         new EncryptedTextPayload(
             Convert.ToBase64String(result),
@@ -139,14 +139,39 @@ app.MapPost("/decrypt/text", async (IEncryptionService service, EncryptedTextPay
     var messageBytes = Convert.FromBase64String(payload.Base64EncodedEncryptedText);
     var ivBytes = Convert.FromBase64String(payload.Iv);
     var tagBytes = Convert.FromBase64String(payload.Tag);
-    
+
     var result = await service.DecryptAsync(messageBytes, ivBytes, tagBytes);
-    
+
     return Results.Ok(new
     {
         Base64DecryptedText = Encoding.UTF8.GetString(result)
     });
 });
+
+app.MapPost("/encrypt/package/text", async (IEncryptionService service, string message, CancellationToken token) =>
+{
+    var messageBytes = Encoding.UTF8.GetBytes(message);
+
+    var result = await service.EncryptAsPackageAsync(messageBytes, token);
+
+    return Results.Ok(new
+    {
+        Base64EncryptedPackage = Convert.ToBase64String(result)
+    });
+});
+
+app.MapPost("/decrypt/package/text",
+    async (IEncryptionService service, EncryptedTextPackagePayload payload, CancellationToken token) =>
+    {
+        var messageBytes = Convert.FromBase64String(payload.Base64EncryptedPackage);
+
+        var result = await service.DecryptPackageAsync(messageBytes, token);
+
+        return Results.Ok(new
+        {
+            Message = Encoding.UTF8.GetString(result)
+        });
+    });
 
 app.MapPost("/encrypt", async (IOptions<ApiSettings> settings, CancellationToken token) =>
 {
@@ -203,23 +228,23 @@ app.MapPost("/decrypt", async (IOptions<ApiSettings> settings, CancellationToken
 {
     const string encryptedFileName = "dump.rdb.crypt";
     const string decryptedFileName = "dump.rdb.dcrypt";
-    
+
     var directory = Directory.GetCurrentDirectory();
     var encryptedFilePath = Path.Combine(directory, "redis-data", encryptedFileName);
     var decryptedFilePath = Path.Combine(directory, "redis-data", decryptedFileName);
     var keyBytes = Convert.FromBase64String(settings.Value.EncryptionKey ?? string.Empty);
-    
+
     await using var encryptedFileStream = new FileStream(encryptedFilePath, FileMode.Open, FileAccess.Read);
     await using var decryptedFileStream = new FileStream(decryptedFilePath, FileMode.OpenOrCreate, FileAccess.Write);
-    
+
     var iv = new byte[12];
     await encryptedFileStream.ReadExactlyAsync(iv.AsMemory(0, iv.Length), token);
-    
+
     var tag = new byte[16];
     using var aesGcm = new AesGcm(keyBytes, tag.Length);
-    
+
     encryptedFileStream.Seek(iv.Length, SeekOrigin.Begin);
-    
+
     var buffer = new byte[4096]; // Read in chunks (4KB)
 
     while (encryptedFileStream.Position < encryptedFileStream.Length - tag.Length)
@@ -229,13 +254,13 @@ app.MapPost("/decrypt", async (IOptions<ApiSettings> settings, CancellationToken
         {
             break;
         }
-        
+
         var chunk = new byte[bytesRead];
         Array.Copy(buffer, chunk, bytesRead - tag.Length);
-        
-        
+
+
         var decryptedChunk = new byte[bytesRead];
-        
+
         aesGcm.Decrypt(
             iv,
             chunk.AsSpan(0, bytesRead),
