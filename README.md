@@ -324,7 +324,44 @@ than the previous method.
 
 #### File direct encryption
 
+Having made the tests for text, we can now extrapolate that same idea to files, 
+by simply getting the bytes from the file we want to encrypt, we can then encrypt 
+said bytes and save them under a different file.
+
+We will be managing three files:
+
+- dump.rdb
+- dump.rdb.crypt
+- dump.rdb.dcrypt
+
+We start encryption by calling `/encrypt/file`. We read `dump.rdb`, this is done 
+with performant methods such as `ReadExactlyAsync` plus the `Memory` struct. 
+We then send those read bytes to the encryption method on our `EncryptionService` 
+and we get back under different variables the _iv_ and _tag_, by the end we save 
+those encrypted bytes as a `dump.rdb.crypt` file.
+
+It's with these same input values that we can then hit the next `/decrypt/file`, 
+pairing the iv and tag with the decrypt function we can then read `dumb.rdb.crypt`, 
+send those encrypted bytes to a decrypt method to get back 
+the decrypted bytes, followed up by saving those bytes under `dump.rdb.dcrypt`. An easy 
+test to validate the decrypted file works the same way as the original is by 
+renaming it to `dump.rdb`, replacing the original one with `.bak` and then running 
+the Redis OM container. When analyzing the saved data we should see the same thing 
+we saw with the original file.
+
+References:
+
+- [CA1835](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1835)
+- [CA2022](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2022)
+- [Tag Mismatch Exception](https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.authenticationtagmismatchexception?view=net-9.0)
+- [Truncation Issue](https://github.com/dotnet/runtime/issues/71366)
+- [Tag does not match](https://stackoverflow.com/questions/60306335/aes-128-gcm-tag-doest-not-match)
+
+#### File direct package encryption
+
 #### File by-chunk encryption
+
+#### File by-chunk package encryption
 
 ## Project Notes
 

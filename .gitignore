@@ -74,3 +74,5 @@ appsettings.bak.json
 # Redis
 
 *.rdb
+*.crypt
+*.dcrypt

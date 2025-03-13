@@ -173,6 +173,54 @@ app.MapPost("/decrypt/package/text",
         });
     });
 
+app.MapPost("/encrypt/file",
+    async (IOptions<ApiSettings> settings, IEncryptionService service, CancellationToken token) =>
+    {
+        var directory = Directory.GetCurrentDirectory();
+        var dumpFilePath = Path.Combine(directory, "redis-data", "dump.rdb");
+
+        await using var inputFileStream = new FileStream(dumpFilePath, FileMode.Open, FileAccess.Read);
+        
+        var encryptedFilePath = Path.Combine(directory, "redis-data", Constants.EncryptedFileName);
+        await using var outputFileStream = new FileStream(encryptedFilePath, FileMode.OpenOrCreate, FileAccess.Write);
+
+        var readBytes = new Memory<byte>(new byte[inputFileStream.Length]);
+        await inputFileStream.ReadExactlyAsync(readBytes, token);
+        var result = await service.EncryptAsync(readBytes.ToArray(), out var iv, out var tag);
+        
+        await outputFileStream.WriteAsync(result.AsMemory(0, result.Length), token);
+
+        return Results.Ok(
+            new EncryptedTextPayload(
+                Convert.ToBase64String(result),
+                Convert.ToBase64String(iv),
+                Convert.ToBase64String(tag)));
+    });
+
+app.MapPost("/decrypt/file",
+    async (IOptions<ApiSettings> settings, IEncryptionService service, EncryptedTextPayload payload, CancellationToken token) =>
+    {
+        var directory = Directory.GetCurrentDirectory();
+        var encryptedFilePath = Path.Combine(directory, "redis-data", Constants.EncryptedFileName);
+        var decryptedFilePath = Path.Combine(directory, "redis-data", Constants.DecryptedFileName);
+        var iv = Convert.FromBase64String(payload.Iv);
+        var tag = Convert.FromBase64String(payload.Tag);
+        
+        await using var inputFileStream = new FileStream(encryptedFilePath, FileMode.Open, FileAccess.Read);
+        await using var outputFileStream = new FileStream(decryptedFilePath, FileMode.OpenOrCreate, FileAccess.Write);
+        
+        var readBytes = new Memory<byte>(new byte[inputFileStream.Length]);
+        await inputFileStream.ReadExactlyAsync(readBytes, token);
+        var result = await service.DecryptAsync(readBytes.ToArray(), iv, tag);
+        
+        await outputFileStream.WriteAsync(result.AsMemory(0, result.Length), token);
+
+        return Results.Ok(new
+        {
+            Message = "File decrypted successfully"
+        });
+    });
+
 app.MapPost("/encrypt", async (IOptions<ApiSettings> settings, CancellationToken token) =>
 {
     const string encryptedFileName = "dump.rdb.crypt";
