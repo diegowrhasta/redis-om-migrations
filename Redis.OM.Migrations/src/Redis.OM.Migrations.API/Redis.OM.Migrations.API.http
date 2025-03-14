@@ -50,6 +50,11 @@ Accept: application/json
 
 ###
 
+POST {{Redis_OM_Migrations_API_HostAddress}}/encrypt/package/file
+Accept: application/json
+
+###
+
 POST {{Redis_OM_Migrations_API_HostAddress}}/decrypt/file
 Accept: application/json
 Content-Type: application/json
@@ -79,4 +84,9 @@ Content-Type: application/json
 {
   "base64EncryptedPackage": "ZzEk6I2AtFyg43LUtbxQueJml5ETcc3A0IKJXTL2jFlWU51eslL/UyA="
 }
+###
+
+POST {{Redis_OM_Migrations_API_HostAddress}}/decrypt/package/file
+Accept: application/json
+
 ###

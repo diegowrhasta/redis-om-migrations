@@ -359,7 +359,18 @@ References:
 
 #### File direct package encryption
 
+With all we've explored up until now, dealing with a file encryption with the 
+package approach is pretty seamless, the pair endpoints are `/encrypt/package/file` 
+and `/decrypt/package/file`. The difference will be that we won't feed any sort 
+of input data (iv nor tag), we simply run a `POST` to the endpoints in order 
+and, we should be getting `dump.rdb.crypt` and `dump.rdb.dcrypt` just fine.
+
+By replacing the original `dump.rdb` with the `dcrypt` one and spinning up the Redis 
+container again we should be seeing the same data as before. 
+
 #### File by-chunk encryption
+
+
 
 #### File by-chunk package encryption
 
