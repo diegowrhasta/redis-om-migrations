@@ -5,4 +5,11 @@ public static class Constants
     public static readonly Type[] Indexes = [typeof(User)];
     public const string EncryptedFileName = "dump.rdb.crypt";
     public const string DecryptedFileName = "dump.rdb.dcrypt";
+    // 4 KB Chunks
+    // 12 Bytes = IV
+    // 16 Bytes = Tag
+    // 4068 Bytes = Actual Payload
+    // When file size is way below that, we need to readjust the calculations 
+    // to whatever size we are dealing with
+    public const int ChunkSize = 4096;
 }

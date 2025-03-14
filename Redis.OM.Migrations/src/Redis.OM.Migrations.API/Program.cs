@@ -263,6 +263,82 @@ app.MapPost("/decrypt/package/file", async (IEncryptionService service, Cancella
     });
 });
 
+app.MapPost("/encrypt/file/chunk", async (IEncryptionService service, CancellationToken token) =>
+{
+    var directory = Directory.GetCurrentDirectory();
+    var dumpFilePath = Path.Combine(directory, "redis-data", "dump.rdb");
+
+    await using var inputFileStream = new FileStream(dumpFilePath, FileMode.Open, FileAccess.Read);
+
+    var encryptedFilePath = Path.Combine(directory, "redis-data", Constants.EncryptedFileName);
+    await using var outputFileStream = new FileStream(encryptedFilePath, FileMode.OpenOrCreate, FileAccess.Write);
+
+    var buffer = new byte[Constants.ChunkSize];
+    var ivAndTagList = new List<EncryptedTextPayload>();
+
+    while (true)
+    {
+        var readBytes = await inputFileStream.ReadAsync(buffer.AsMemory(0, buffer.Length), token);
+
+        if (readBytes == 0)
+        {
+            break;
+        }
+
+        if (readBytes < Constants.ChunkSize)
+        {
+            Array.Resize(ref buffer, readBytes);
+        }
+
+        var result = await service.EncryptAsync(buffer, out var iv, out var tag);
+
+        await outputFileStream.WriteAsync(result.AsMemory(0, result.Length), token);
+        ivAndTagList.Add(new EncryptedTextPayload(
+            Base64EncodedEncryptedText: string.Empty,
+            Convert.ToBase64String(iv),
+            Convert.ToBase64String(tag))
+        );
+    }
+
+    return Results.Ok(new
+    {
+        Parameters = ivAndTagList,
+    });
+});
+
+app.MapPost("/decrypt/file/chunk", 
+    async (IEncryptionService service, ChunkEncryptionParameters parameters, CancellationToken token) =>
+{
+    var directory = Directory.GetCurrentDirectory();
+    var encryptedFilePath = Path.Combine(directory, "redis-data", Constants.EncryptedFileName);
+    var decryptedFilePath = Path.Combine(directory, "redis-data", Constants.DecryptedFileName);
+
+    await using var inputFileStream = new FileStream(encryptedFilePath, FileMode.Open, FileAccess.Read);
+    await using var outputFileStream = new FileStream(decryptedFilePath, FileMode.OpenOrCreate, FileAccess.Write);
+
+    var buffer = new byte[Constants.ChunkSize];
+
+    foreach (var parameter in parameters.Parameters)
+    {
+        var readBytes = await inputFileStream.ReadAsync(buffer.AsMemory(0, buffer.Length), token);
+        
+        if (readBytes < Constants.ChunkSize)
+        {
+            Array.Resize(ref buffer, readBytes);
+        }
+        
+        var result = await service.DecryptAsync(
+            buffer, Convert.FromBase64String(parameter.Iv), Convert.FromBase64String(parameter.Tag));
+        
+        await outputFileStream.WriteAsync(result.AsMemory(0, result.Length), token);
+    }
+
+    return Results.Ok(new
+    {
+        Message = "File decrypted successfully"
+    });
+});
+
 app.MapPost("/encrypt", async (IOptions<ApiSettings> settings, CancellationToken token) =>
 {
     const string encryptedFileName = "dump.rdb.crypt";

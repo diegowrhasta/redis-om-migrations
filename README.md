@@ -370,7 +370,35 @@ container again we should be seeing the same data as before.
 
 #### File by-chunk encryption
 
+Building on the previous idea of encryption of a file, we can now analyze a technique 
+that involves in improving memory usage plus performance and that's when dealing 
+with big files. A technique to deal with that is to separate the encryption of the 
+file in _chunks_. We read by a _self-declared_ amount of bytes in a buffer and, 
+we encrypt that chunk with its own `iv` plus `tag` parameters. (If we want security 
+we have to generate this pair of parameters per each encrypted chunk).
 
+We have two pair endpoints for this flow `/encrypt/file/chunk` and `decrypt/file/chunk`. 
+The endpoints are also designed to cover cases in which the file is not "big-enough" 
+for our chunk buffer size. In this instance we will simply resize the buffer so that 
+we truncate all unused bytes and just deal with the actual significant bytes that 
+are read from a file (encrypted or bare). Our self-declared chunk size is 4 Kibibytes 
+or 4096 bits. The way the logic works is as follows:
+
+- We will read in 4096-bit chunks the file up until no more bytes are left to be read.
+- We will then take those 4096 bits and encrypt them, spitting out the iv and tag 
+that were used for this chunk encryption.
+- We write those encrypted bytes to an output file and save those chunks parameters 
+in a list on memory.
+- By then end, when everything has been encrypted, we return through a JSON 
+response a list that will contain (in order), all the iv and tag parameters per 
+chunk that was encrypted.
+- On the decryption side we will send that same list with iv and tags and start 
+reading each parameter line item to then pair with bytes that are read (again in a chunk life fashion) 
+from the encryption file. We decrypt each chunk with their respective iv and tag 
+and, we start writing the decrypted file chunk by chunk. _NOTE:_ We also have 
+defensive logic set in place in case we are reading "a not-big-enough" chunk so 
+that we truncate the values and not end up with padded empty bytes that would also 
+cause for the decryption process to fail.
 
 #### File by-chunk package encryption
 

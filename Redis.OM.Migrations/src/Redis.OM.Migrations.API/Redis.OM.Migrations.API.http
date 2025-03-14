@@ -55,6 +55,11 @@ Accept: application/json
 
 ###
 
+POST {{Redis_OM_Migrations_API_HostAddress}}/encrypt/file/chunk
+Accept: application/json
+
+###
+
 POST {{Redis_OM_Migrations_API_HostAddress}}/decrypt/file
 Accept: application/json
 Content-Type: application/json
@@ -89,4 +94,19 @@ Content-Type: application/json
 POST {{Redis_OM_Migrations_API_HostAddress}}/decrypt/package/file
 Accept: application/json
 
+###
+
+POST {{Redis_OM_Migrations_API_HostAddress}}/decrypt/file/chunk
+Accept: application/json
+Content-Type: application/json
+
+{
+  "parameters": [
+    {
+      "base64EncodedEncryptedText": "",
+      "iv": "qqoy2BeZw+bj5UaS",
+      "tag": "G13CEm/ju8qCINfK/frQdw=="
+    }
+  ]
+}
 ###
