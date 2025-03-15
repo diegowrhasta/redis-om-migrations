@@ -402,6 +402,48 @@ cause for the decryption process to fail.
 
 #### File by-chunk package encryption
 
+Lastly, we have the most compact and (in theory) efficient method of encrypting 
+files. We manage everything in packages (iv, tag, data bytes), meaning that a file 
+contains all the necessary information to be decrypted, provided we have the 
+secret key somewhere.
+
+The pair endpoints are `/encrypt/package/file/chunk` and `/decrypt/package/file/chunk`. 
+There's a slight detail we have to take into account when working with the packaging 
+pattern, and that's that since we will be storing the IV and Tag for each encrypted 
+chunk in the same stream, we need to compensate the bytes that will be occupied 
+by both the **Tag** and the **IV**. Based on what's the chunk size, we have to 
+subtract the sizes of these two variables, so that we can read bytes of the data 
+stream with that resulting size, so that later on we append the IV and Tags that 
+were used to encrypt said chunk.
+
+```csharp
+const int actualDataSize = Constants.ChunkSize - Constants.IvSize - Constants.TagSize;
+var buffer = new byte[actualDataSize];
+```
+This means that the buffer used to read from the file to be encrypted will have 
+a size a bit less than what we designed as the "chunk size". When decrypting the 
+file however, assuming the encryption was done in the previously stated manner, 
+we will be reading from the encrypted file on a buffer that will be of the full 
+size. And this is because all chunks should have the IV and Tag bytes at their 
+respective positions, leaving us with the actual chunk of data to decrypt ready 
+to be put through the decrypt function.
+
+Whenever we are reaching the end of the file, and we might have a chunk with fewer 
+bytes than the maximum, we also resize it so that we don't deal with empty bytes 
+that could also cause the whole flow to fail. This usually happens only when dealing 
+with small files and-or iterating over the last chunk which might not have all the 
+bytes necessary to fill the buffer to its full capacity. In this specific instance 
+the resulting _truncated_ chunk will have the positions of IV and Tag adapted relatively 
+to whatever stream of whatever size we are dealing with. (E.g., a 2Kb chunk, 
+should have its first 12 bits with the IV, and its last 16 bits with the Tag, on 
+a fully allocated chunk, i.e., 4Kb will have the same bits reserved for the respective 
+encryption variables).
+
+_NOTE:_ Files that are tiny (less than 4KB on most modern systems), will be saved 
+under blocks that are 4 KB long. This is the minimum that they can be stored under, 
+the file will remain at its original size, but on disk a 4 KB block will be used to 
+store it.
+
 ## Project Notes
 
 - A `CleanupService` has been implemented to drop all indexes (and in turn all documents) 

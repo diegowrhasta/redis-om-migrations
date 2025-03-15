@@ -339,102 +339,78 @@ app.MapPost("/decrypt/file/chunk",
     });
 });
 
-app.MapPost("/encrypt", async (IOptions<ApiSettings> settings, CancellationToken token) =>
+app.MapPost("/encrypt/package/file/chunk", async (IEncryptionService service, CancellationToken token) =>
 {
-    const string encryptedFileName = "dump.rdb.crypt";
-
     var directory = Directory.GetCurrentDirectory();
     var dumpFilePath = Path.Combine(directory, "redis-data", "dump.rdb");
-    var encryptedFilePath = Path.Combine(directory, "redis-data", encryptedFileName);
-    var keyBytes = Convert.FromBase64String(settings.Value.EncryptionKey ?? string.Empty);
-
-    var iv = RandomNumberGenerator.GetBytes(12);
-    var tag = new byte[16];
 
     await using var inputFileStream = new FileStream(dumpFilePath, FileMode.Open, FileAccess.Read);
+
+    var encryptedFilePath = Path.Combine(directory, "redis-data", Constants.EncryptedFileName);
     await using var outputFileStream = new FileStream(encryptedFilePath, FileMode.OpenOrCreate, FileAccess.Write);
-    using var aesGcm = new AesGcm(keyBytes, tag.Length);
 
-    await outputFileStream.WriteAsync(iv.AsMemory(0, iv.Length), token);
-
-    var buffer = new byte[4096]; // Read in chunks (4KB)
+    const int actualDataSize = Constants.ChunkSize - Constants.IvSize - Constants.TagSize;
+    var buffer = new byte[actualDataSize];
 
     while (true)
     {
-        var bytesRead = await inputFileStream.ReadAsync(
-            buffer.AsMemory(0, buffer.Length), token);
-        if (bytesRead == 0)
+        var readBytes = await inputFileStream.ReadAsync(buffer.AsMemory(0, buffer.Length), token);
+
+        if (readBytes == 0)
         {
             break;
         }
 
-        var chunk = new byte[bytesRead];
-        Array.Copy(buffer, chunk, bytesRead);
+        if (readBytes < actualDataSize)
+        {
+            Array.Resize(ref buffer, readBytes);
+        }
 
-        var encryptedChunk = new byte[bytesRead];
+        var result = await service.EncryptAsPackageAsync(buffer, token);
 
-        aesGcm.Encrypt(
-            iv,
-            chunk.AsSpan(0, bytesRead),
-            encryptedChunk.AsSpan(0, bytesRead),
-            tag);
-        await outputFileStream.WriteAsync(
-            encryptedChunk.AsMemory(0, encryptedChunk.Length), token);
-        await outputFileStream.WriteAsync(tag.AsMemory(0, tag.Length), token);
+        await outputFileStream.WriteAsync(result.AsMemory(0, result.Length), token);
     }
 
     return Results.Ok(new
     {
-        DumpFilePath = dumpFilePath,
-        EncryptedFilePath = encryptedFilePath,
+        Message = "File packaged and encrypted in chunks",
     });
 });
 
-app.MapPost("/decrypt", async (IOptions<ApiSettings> settings, CancellationToken token) =>
+app.MapPost("/decrypt/package/file/chunk", async (IEncryptionService service, CancellationToken token) =>
 {
-    const string encryptedFileName = "dump.rdb.crypt";
-    const string decryptedFileName = "dump.rdb.dcrypt";
-
     var directory = Directory.GetCurrentDirectory();
-    var encryptedFilePath = Path.Combine(directory, "redis-data", encryptedFileName);
-    var decryptedFilePath = Path.Combine(directory, "redis-data", decryptedFileName);
-    var keyBytes = Convert.FromBase64String(settings.Value.EncryptionKey ?? string.Empty);
+    var encryptedFilePath = Path.Combine(directory, "redis-data", Constants.EncryptedFileName);
+    var decryptedFilePath = Path.Combine(directory, "redis-data", Constants.DecryptedFileName);
 
-    await using var encryptedFileStream = new FileStream(encryptedFilePath, FileMode.Open, FileAccess.Read);
-    await using var decryptedFileStream = new FileStream(decryptedFilePath, FileMode.OpenOrCreate, FileAccess.Write);
+    await using var inputFileStream = new FileStream(encryptedFilePath, FileMode.Open, FileAccess.Read);
+    await using var outputFileStream = new FileStream(decryptedFilePath, FileMode.OpenOrCreate, FileAccess.Write);
 
-    var iv = new byte[12];
-    await encryptedFileStream.ReadExactlyAsync(iv.AsMemory(0, iv.Length), token);
+    var buffer = new byte[Constants.ChunkSize];
 
-    var tag = new byte[16];
-    using var aesGcm = new AesGcm(keyBytes, tag.Length);
-
-    encryptedFileStream.Seek(iv.Length, SeekOrigin.Begin);
-
-    var buffer = new byte[4096]; // Read in chunks (4KB)
-
-    while (encryptedFileStream.Position < encryptedFileStream.Length - tag.Length)
+    while (true)
     {
-        var bytesRead = await encryptedFileStream.ReadAsync(buffer.AsMemory(0, buffer.Length), token);
-        if (bytesRead == 0)
+        var readBytes = await inputFileStream.ReadAsync(buffer.AsMemory(0, buffer.Length), token);
+
+        if (readBytes == 0)
         {
             break;
         }
-
-        var chunk = new byte[bytesRead];
-        Array.Copy(buffer, chunk, bytesRead - tag.Length);
-
-
-        var decryptedChunk = new byte[bytesRead];
-
-        aesGcm.Decrypt(
-            iv,
-            chunk.AsSpan(0, bytesRead),
-            tag,
-            decryptedChunk);
-
-        await decryptedFileStream.WriteAsync(decryptedChunk.AsMemory(0, decryptedChunk.Length), token);
+        
+        if (readBytes < Constants.ChunkSize)
+        {
+            Array.Resize(ref buffer, readBytes);
+        }
+        
+        var result = await service.DecryptPackageAsync(buffer, token);
+        
+        await outputFileStream.WriteAsync(result.AsMemory(0, result.Length), token);
     }
+
+    return Results.Ok(new
+    {
+        Message = "File decrypted successfully"
+    });
 });
 
 app.Run();

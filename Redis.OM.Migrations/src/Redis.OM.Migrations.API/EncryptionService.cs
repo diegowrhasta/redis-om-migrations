@@ -26,8 +26,8 @@ public class EncryptionService(IOptions<ApiSettings> settings) : IEncryptionServ
     {
         var keyBytes = Convert.FromBase64String(
             settings.Value.EncryptionKey ?? string.Empty);
-        iv = RandomNumberGenerator.GetBytes(12);
-        tag = new byte[16];
+        iv = RandomNumberGenerator.GetBytes(Constants.IvSize);
+        tag = new byte[Constants.TagSize];
         var encryptedBytes = new byte[bytes.Length];
         
         using var aesGcm = new AesGcm(keyBytes, tag.Length);
@@ -53,8 +53,8 @@ public class EncryptionService(IOptions<ApiSettings> settings) : IEncryptionServ
         var keyBytes = Convert.FromBase64String(
             settings.Value.EncryptionKey ?? string.Empty);
 
-        var iv = RandomNumberGenerator.GetBytes(12);
-        var tag = new byte[16];
+        var iv = RandomNumberGenerator.GetBytes(Constants.IvSize);
+        var tag = new byte[Constants.TagSize];
         var encryptedBytes = new byte[bytes.Length];
         
         using var aesGcm = new AesGcm(keyBytes, tag.Length);
@@ -113,8 +113,8 @@ public class EncryptionService(IOptions<ApiSettings> settings) : IEncryptionServ
         
         await using var memoryStream = new MemoryStream(bytes);
         
-        var iv = new byte[12];
-        var tag = new byte[16];
+        var iv = new byte[Constants.IvSize];
+        var tag = new byte[Constants.TagSize];
         
         await memoryStream.ReadExactlyAsync(iv.AsMemory(0, iv.Length), token);
         

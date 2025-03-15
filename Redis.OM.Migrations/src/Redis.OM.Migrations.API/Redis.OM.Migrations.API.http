@@ -60,6 +60,11 @@ Accept: application/json
 
 ###
 
+POST {{Redis_OM_Migrations_API_HostAddress}}/encrypt/package/file/chunk
+Accept: application/json
+
+###
+
 POST {{Redis_OM_Migrations_API_HostAddress}}/decrypt/file
 Accept: application/json
 Content-Type: application/json
@@ -104,9 +109,39 @@ Content-Type: application/json
   "parameters": [
     {
       "base64EncodedEncryptedText": "",
-      "iv": "qqoy2BeZw+bj5UaS",
-      "tag": "G13CEm/ju8qCINfK/frQdw=="
+      "iv": "1cQ84QcX9+Q+iOgD",
+      "tag": "BN3t2L/FDwfUgdXuh4rhrA=="
+    },
+    {
+      "base64EncodedEncryptedText": "",
+      "iv": "SnVf3ZQsdgiMTkF6",
+      "tag": "KCGzl2U84fM2wYDB34T9gA=="
+    },
+    {
+      "base64EncodedEncryptedText": "",
+      "iv": "6nYuWr4mHRFToO8y",
+      "tag": "7Jnj0wKRYuMQUQMD8v2U+g=="
+    },
+    {
+      "base64EncodedEncryptedText": "",
+      "iv": "6JoZgla37seoRWTg",
+      "tag": "L8CjOMfpZUiS8h9ECAjRqg=="
+    },
+    {
+      "base64EncodedEncryptedText": "",
+      "iv": "6w3CkkAw3FcHs0cq",
+      "tag": "48MiI3vW7npIgl+w8M/jbg=="
+    },
+    {
+      "base64EncodedEncryptedText": "",
+      "iv": "rq73U/oq/zyguLyG",
+      "tag": "m5oNNOAHhkr4Cz6oWDuvow=="
     }
   ]
 }
+###
+
+POST {{Redis_OM_Migrations_API_HostAddress}}/decrypt/package/file/chunk
+Accept: application/json
+
 ###
