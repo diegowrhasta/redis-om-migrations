@@ -8,7 +8,7 @@ public static class Constants
     // 4 KB Chunks
     // 12 Bytes = IV
     // 16 Bytes = Tag
-    // 4096 Bytes = Actual Payload
+    // 4068 Bytes = Actual Payload
     // When file size is way below that, we need to readjust the calculations 
     // to whatever size we are dealing with
     public const int ChunkSize = 4096;
